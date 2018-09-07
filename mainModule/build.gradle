@@ -1,7 +1,7 @@
-plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.2.61'
-}
-apply plugin: 'java-library'
+//plugins {
+//    id 'org.jetbrains.kotlin.jvm' version '1.2.61'
+//}
+apply plugin: 'kotlin'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
