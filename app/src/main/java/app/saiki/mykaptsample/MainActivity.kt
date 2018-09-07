@@ -2,7 +2,7 @@ package app.saiki.mykaptsample
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import app.saiki.generator.MyAnnotation
+import app.saiki.annotation.MyAnnotation
 
 @MyAnnotation
 class MainActivity : AppCompatActivity() {

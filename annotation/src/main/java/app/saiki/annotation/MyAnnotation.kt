@@ -1,4 +1,4 @@
-package app.saiki.generator
+package app.saiki.annotation
 
 @Target(AnnotationTarget.CLASS)
 annotation class MyAnnotation

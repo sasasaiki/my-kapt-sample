@@ -1,1 +1,1 @@
-include ':app', ':generator', ':mainModule'
+include ':app', ':generator', ':mainModule', ':annotation'
