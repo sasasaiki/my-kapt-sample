@@ -1,57 +1,79 @@
 package app.saiki.generator
 
-import app.saiki.annotation.MyAnnotation
+import app.saiki.annotation.Greeting
+import com.google.auto.common.BasicAnnotationProcessor
 import com.google.auto.service.AutoService
+import com.google.common.collect.SetMultimap
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.TypeSpec
 import java.io.File
-import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Processor
-import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.TypeElement
-
+import javax.lang.model.element.Element
+import javax.lang.model.element.ElementKind
 
 @AutoService(Processor::class)
-class Generator: AbstractProcessor() {
-
-    override fun getSupportedAnnotationTypes(): MutableSet<String> {
-        println("getSupportedAnnotationTypes")
-        return mutableSetOf(MyAnnotation::class.java.name)
-    }
-
-    override fun getSupportedSourceVersion(): SourceVersion {
-        return SourceVersion.latest()
-    }
-
-    override fun process(set: MutableSet<out TypeElement>, roundEnv: RoundEnvironment): Boolean {
-        println("process")
-        roundEnv.getElementsAnnotatedWith(MyAnnotation::class.java)
-                .forEach {
-                    val className = it.simpleName.toString()
-                    println("Processing: $className")
-                    val pack = processingEnv.elementUtils.getPackageOf(it).toString()
-                    generateClass(className, pack)
-                }
-        return true
-    }
-
-    private fun generateClass(className: String, pack: String) {
-        val fileName = "Generated_$className"
-        val file = FileSpec.builder(pack, fileName)
-                .addType(TypeSpec.classBuilder(fileName)
-                        .addFunction(FunSpec.builder("getName")
-                                .addStatement("return \"World\"")
-                                .build())
-                        .build())
-                .build()
-
-        val kaptKotlinGeneratedDir = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-        file.writeTo(File(kaptKotlinGeneratedDir, "$fileName.kt"))
-    }
-
+class MyProcessor : BasicAnnotationProcessor() {
     companion object {
-        const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
+        private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
+    }
+
+    override fun getSupportedSourceVersion() = SourceVersion.latestSupported()!!
+
+    override fun initSteps(): MutableIterable<ProcessingStep> {
+        val outputDirectory = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+                ?.replace("kaptKotlin", "kapt")
+                ?.let { File(it) }
+                ?: throw IllegalArgumentException("No output directory!")
+        return mutableListOf(MyProcessingStep(outputDir = outputDirectory))
+    }
+}
+
+class MyProcessingStep(private val outputDir: File) : BasicAnnotationProcessor.ProcessingStep {
+
+    override fun annotations() = mutableSetOf(Greeting::class.java,Greeting::class.java)
+
+    override fun process(elementsByAnnotation: SetMultimap<Class<out Annotation>, Element>?): MutableSet<Element> {
+        elementsByAnnotation ?: return mutableSetOf()
+        try {
+            for (annotatedElement in elementsByAnnotation[Greeting::class.java]) {
+
+                if (annotatedElement.kind !== ElementKind.CLASS) {
+                    throw Exception("@${Greeting::class.java.simpleName} can annotate class type.")
+                }
+
+                // fieldにつけると$が付いてくることがあるらしい
+                val annotatedClassName = annotatedElement.simpleName.toString().trimDollarIfNeeded()
+
+                val generatingFunc = FunSpec
+                        .builder("greet")
+                        .addStatement("return \"Hello $annotatedClassName !!\"")
+                        .build()
+
+                val generatingClass = TypeSpec
+                        .classBuilder("${annotatedClassName}_Greeter")
+                        .addFunction(generatingFunc)
+                        .build()
+
+                FileSpec.builder("app.saiki.generated", generatingClass.name!!)
+                        .addType(generatingClass)
+                        .build()
+                        .writeTo(outputDir)
+            }
+
+        } catch (e: Exception) {
+            throw e
+        }
+
+        // ここで何かしらをreturnすると次のステップでごにょごにょできるらしい？
+        return mutableSetOf()
+    }
+
+
+    // 名前に含まれる$をとる
+    private fun String.trimDollarIfNeeded(): String {
+        val index = indexOf("$")
+        return if (index == -1) this else substring(0, index)
     }
 }
