@@ -4,12 +4,12 @@ apply plugin: 'kotlin-android'
 
 apply plugin: 'kotlin-android-extensions'
 
-apply plugin: 'kotlin-kapt'
+apply plugin: 'kotlin-kapt'//ここを追加
 
 sourceSets {
     main {
         java {
-            srcDir "${buildDir.absolutePath}/tmp/kapt/main/kotlinGenerated/"
+            srcDir "${buildDir.absolutePath}/tmp/kapt/main/kotlinGenerated/"//コマンドでビルド実行するときに必要？忘れた
         }
     }
 }
@@ -43,6 +43,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
+    //下記2行を追加
     kapt project(':generator')
     implementation project(':annotation')
 }

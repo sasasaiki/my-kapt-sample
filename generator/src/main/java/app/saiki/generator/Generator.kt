@@ -13,49 +13,54 @@ import javax.lang.model.SourceVersion
 import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 
-@AutoService(Processor::class)
-class MyProcessor : BasicAnnotationProcessor() {
+@AutoService(Processor::class)//auto-service使うのに必要なので忘れずに
+class MyProcessor : BasicAnnotationProcessor() {//AbstractProcessorもしくはBasicAnnotationProcessorを継承する
     companion object {
-        private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
+        private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"//こういうもんらしい
     }
 
-    override fun getSupportedSourceVersion() = SourceVersion.latestSupported()!!
+    override fun getSupportedSourceVersion() = SourceVersion.latestSupported()!!//コンパイラのサポートバージョンを指定
 
     override fun initSteps(): MutableIterable<ProcessingStep> {
         val outputDirectory = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
-                ?.replace("kaptKotlin", "kapt")
+                ?.replace("kaptKotlin", "kapt")//ここでkaptKotlinをkaptに変えないと生成後のclassが読めない
                 ?.let { File(it) }
                 ?: throw IllegalArgumentException("No output directory!")
+
+        //ここでStepたちを渡すと実行される
         return mutableListOf(MyProcessingStep(outputDir = outputDirectory))
     }
 }
 
 class MyProcessingStep(private val outputDir: File) : BasicAnnotationProcessor.ProcessingStep {
 
-    override fun annotations() = mutableSetOf(Greeting::class.java,Greeting::class.java)
+    override fun annotations() = mutableSetOf(Greeting::class.java,Greeting::class.java)//どのアノテーションを処理するか羅列
 
     override fun process(elementsByAnnotation: SetMultimap<Class<out Annotation>, Element>?): MutableSet<Element> {
         elementsByAnnotation ?: return mutableSetOf()
         try {
             for (annotatedElement in elementsByAnnotation[Greeting::class.java]) {
 
-                if (annotatedElement.kind !== ElementKind.CLASS) {
+                if (annotatedElement.kind !== ElementKind.CLASS) {//今回はClassしかこないが念のためチェック
                     throw Exception("@${Greeting::class.java.simpleName} can annotate class type.")
                 }
 
-                // fieldにつけると$が付いてくることがあるらしい
+                // fieldにつけると$が付いてくることがあるらしいのであればとる
                 val annotatedClassName = annotatedElement.simpleName.toString().trimDollarIfNeeded()
 
+                //func生成
                 val generatingFunc = FunSpec
                         .builder("greet")
                         .addStatement("return \"Hello $annotatedClassName !!\"")
                         .build()
 
+                //class生成
                 val generatingClass = TypeSpec
                         .classBuilder("${annotatedClassName}_Greeter")
                         .addFunction(generatingFunc)
                         .build()
 
+                //書き込み
                 FileSpec.builder("app.saiki.generated", generatingClass.name!!)
                         .addType(generatingClass)
                         .build()
